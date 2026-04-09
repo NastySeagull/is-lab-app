@@ -1,12 +1,5 @@
-﻿using Microsoft.Data.SqlClient;
+﻿var builder = WebApplication.CreateBuilder(args);
 
-// =============================================
-// ИСПОЛНЯЕМЫЙ КОД (top-level statements)
-// =============================================
-
-var builder = WebApplication.CreateBuilder(args);
-
-// Добавляем поддержку Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -20,33 +13,28 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// ====================== ДИАГНОСТИЧЕСКИЕ ЭНДПОИНТЫ ======================
+// ====================== ДАННЫЕ ======================
+var notes = new List<Note>();
+var nextId = 1;
 
-app.MapGet("/health", () =>
-    Results.Ok(new { status = "ok", time = DateTime.UtcNow }));
+// ====================== ДИАГНОСТИЧЕСКИЕ ЭНДПОИНТЫ ======================
+app.MapGet("/health", () => Results.Ok(new { status = "ok", time = DateTime.UtcNow }));
 
 app.MapGet("/version", (IConfiguration config) =>
 {
-    var appName = config["App:Name"] ?? "IsLabApp";
-    var appVersion = config["App:Version"] ?? "1.0-lab4";
-
-    return Results.Ok(new { name = appName, version = appVersion });
+    var name = config["App:Name"] ?? "IsLabApp";
+    var version = config["App:Version"] ?? "1.0-lab4";
+    return Results.Ok(new { name, version });
 });
-
-// ====================== ПРОВЕРКА ПОДКЛЮЧЕНИЯ К БД ======================
 
 app.MapGet("/db/ping", async (IConfiguration config) =>
 {
-    var connectionString = config.GetConnectionString("Mssql");
-
-    if (string.IsNullOrEmpty(connectionString))
-        return Results.Ok(new { status = "error", message = "Connection string not configured" });
-
+    var conn = config.GetConnectionString("Mssql");
     try
     {
-        await using var connection = new SqlConnection(connectionString);
+        await using var connection = new Microsoft.Data.SqlClient.SqlConnection(conn);
         await connection.OpenAsync();
-        return Results.Ok(new { status = "ok", message = "Successfully connected to MS SQL Server" });
+        return Results.Ok(new { status = "ok", message = "Connected to MS SQL" });
     }
     catch (Exception ex)
     {
@@ -55,30 +43,17 @@ app.MapGet("/db/ping", async (IConfiguration config) =>
 });
 
 // ====================== CRUD ЗАМЕТОК ======================
-
-var notes = new List<Note>();
-var nextId = 1;
-
 app.MapGet("/api/notes", () => notes);
 
 app.MapGet("/api/notes/{id}", (int id) =>
-{
-    var note = notes.FirstOrDefault(n => n.Id == id);
-    return note is not null ? Results.Ok(note) : Results.NotFound();
-});
+    notes.FirstOrDefault(n => n.Id == id) is Note n ? Results.Ok(n) : Results.NotFound());
 
 app.MapPost("/api/notes", (NoteCreate input) =>
 {
     if (string.IsNullOrWhiteSpace(input.Title))
         return Results.BadRequest(new { error = "Title is required" });
 
-    var note = new Note(
-        Id: nextId++,
-        Title: input.Title.Trim(),
-        Text: input.Text?.Trim() ?? "",
-        CreatedAt: DateTime.UtcNow
-    );
-
+    var note = new Note(nextId++, input.Title.Trim(), input.Text?.Trim() ?? "", DateTime.UtcNow);
     notes.Add(note);
     return Results.Created($"/api/notes/{note.Id}", note);
 });
@@ -86,19 +61,14 @@ app.MapPost("/api/notes", (NoteCreate input) =>
 app.MapDelete("/api/notes/{id}", (int id) =>
 {
     var index = notes.FindIndex(n => n.Id == id);
-    if (index == -1)
-        return Results.NotFound();
-
+    if (index == -1) return Results.NotFound();
     notes.RemoveAt(index);
     return Results.NoContent();
 });
 
-// ====================== ЗАПУСК ПРИЛОЖЕНИЯ ======================
+// ====================== ЗАПУСК ======================
 app.Run();
 
-// =============================================
-// ОБЪЯВЛЕНИЯ ТИПОВ — ТОЛЬКО В САМОМ КОНЦЕ ФАЙЛА!
-// =============================================
-
+// ====================== МОДЕЛИ — ТОЛЬКО В КОНЦЕ ======================
 record Note(int Id, string Title, string Text, DateTime CreatedAt);
-record NoteCreate(string Title, string Text);
+record NoteCreate(string Title, string? Text);
