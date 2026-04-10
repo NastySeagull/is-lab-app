@@ -1,4 +1,6 @@
-﻿var builder = WebApplication.CreateBuilder(args);
+﻿using Microsoft.Data.SqlClient;
+
+var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -29,16 +31,37 @@ app.MapGet("/version", (IConfiguration config) =>
 
 app.MapGet("/db/ping", async (IConfiguration config) =>
 {
-    var conn = config.GetConnectionString("Mssql");
+    var connectionString = config.GetConnectionString("Mssql");
+
+    if (string.IsNullOrEmpty(connectionString))
+    {
+        return Results.Ok(new
+        {
+            status = "error",
+            message = "Connection string is not configured"
+        });
+    }
+
     try
     {
-        await using var connection = new Microsoft.Data.SqlClient.SqlConnection(conn);
+        await using var connection = new SqlConnection(connectionString);
         await connection.OpenAsync();
-        return Results.Ok(new { status = "ok", message = "Connected to MS SQL" });
+
+        return Results.Ok(new
+        {
+            status = "ok",
+            message = "Successfully connected to MS SQL Server",
+            serverVersion = connection.ServerVersion
+        });
     }
     catch (Exception ex)
     {
-        return Results.Ok(new { status = "error", message = ex.Message });
+        return Results.Ok(new
+        {
+            status = "error",
+            message = ex.Message,
+            hint = "Убедитесь, что SQL Server запущен и строка подключения верная"
+        });
     }
 });
 
