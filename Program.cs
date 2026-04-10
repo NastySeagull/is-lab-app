@@ -45,13 +45,20 @@ app.MapGet("/db/ping", async (IConfiguration config) =>
     try
     {
         await using var connection = new SqlConnection(connectionString);
+
+        // Увеличиваем timeout для Docker-окружения
+        connection.ConnectionString += ";Connect Timeout=30;";
+
         await connection.OpenAsync();
 
         return Results.Ok(new
         {
             status = "ok",
             message = "Successfully connected to MS SQL Server",
-            serverVersion = connection.ServerVersion
+            serverVersion = connection.ServerVersion,
+            database = connection.Database,
+            dataSource = connection.DataSource,
+            hint = "Подключение успешно"
         });
     }
     catch (Exception ex)
@@ -60,7 +67,11 @@ app.MapGet("/db/ping", async (IConfiguration config) =>
         {
             status = "error",
             message = ex.Message,
-            hint = "Убедитесь, что SQL Server запущен и строка подключения верная"
+            innerException = ex.InnerException?.Message,
+            connectionStringPreview = connectionString.Length > 100
+                ? connectionString.Substring(0, 100) + "..."
+                : connectionString,
+            hint = "Проверьте: 1) Запущен ли контейнер mssql? 2) Правильное ли имя сервера (mssql)? 3) Пароль?"
         });
     }
 });
