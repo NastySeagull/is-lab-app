@@ -32,6 +32,7 @@ jobs:
       - name: Run tests
         run: dotnet test --no-build --verbosity normal
 
+<<<<<<< HEAD
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -47,3 +48,13 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/prilog:latest
             ghcr.io/${{ github.repository_owner }}/prilog:${{ github.sha }}
+=======
+   - name: Build and push Docker image
+    uses: docker/build-push-action@v5
+    with:
+     context: .
+     push: true
+     tags: |
+      ghcr.io/${{ lower(github.repository_owner) }}/prilog:latest
+      ghcr.io/${{ lower(github.repository_owner) }}/prilog:${{ github.sha }}
+>>>>>>> 31638ab (fix1)
