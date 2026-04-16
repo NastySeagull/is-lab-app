@@ -38,6 +38,6 @@ jobs:
          context: .
          push: true
          tags: |
-          ghcr.io/${{ github.repository_owner.lowercase }}/prilog:latest
-          ghcr.io/${{ github.repository_owner.lowercase }}/prilog:${{ github.sha }}
+          ghcr.io/nastyseagull/prilog:latest
+          ghcr.io/nastyseagull/prilog:${{ github.sha }}
 
