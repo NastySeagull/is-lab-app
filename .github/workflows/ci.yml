@@ -32,12 +32,6 @@ jobs:
       - name: Run tests
         run: dotnet test --no-build --verbosity normal
 
-      - name: set lower case owner name
-        run: |
-          echo "OWNER_LC=${OWNER,,}" >>${GITHUB_ENV}
-        env:
-          OWNER: '${{ github.repository_owner }}'
-
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
