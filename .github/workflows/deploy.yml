@@ -1,0 +1,26 @@
+name: CD - Deploy to Server
+
+on:
+ workflow_run:
+  workflows: ["CI/CD - Build, Test and Push to GHCR"]
+  types:
+   - completed
+
+jobs:
+ deploy:
+  runs-on: ubuntu-latest
+  if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+  steps:
+   - name: Deploy to Ubuntu Server via SSH
+    uses: appleboy/ssh-action@v1.0.3
+    with:
+     host: ${{ secrets.DEPLOY_HOST }}
+     username: ${{ secrets.DEPLOY_USER }}
+     key: ${{ secrets.DEPLOY_SSH_KEY }}
+     script: |
+      cd /home/deployer/deploy/is-stack
+      docker login ghcr.io -u ${{ secrets.GHCR_USER }} --password-stdin <<< "${{ secrets.GHCR_TOKEN }}"
+      docker compose pull
+      docker compose up -d
+      docker image prune -f
